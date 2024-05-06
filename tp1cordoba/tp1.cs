@@ -225,7 +225,7 @@ public class Program()
 
         internal bool EstaLibre(int x)
         {
-            return celdas[x] == '.';
+            return celdas[x] == ' ';
         }
     }
 
@@ -237,7 +237,7 @@ public class Program()
 
         protected override void AgregarMedio()
         {
-            celdas.Add('.');
+            celdas.Add(' ');
         }
         protected override void AgregarPunta()
         {
