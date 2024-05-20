@@ -12,8 +12,11 @@ public class Program()
     class Juego
     {
         int frame;
-        Personaje jugador;
-        List<Personaje> monda;
+        Entidades jugador;
+        Enemigos enemigos;
+        List<Enemigos> monda;
+        Arma arma;
+        List<Arma> disparo;
         Habitacion habitacion;
 
 
@@ -36,7 +39,7 @@ public class Program()
 
                 DibujarPantalla();
 
-                Thread.Sleep(100);
+                Thread.Sleep(300);
             }
         }
 
@@ -44,9 +47,10 @@ public class Program()
         {
             frame = 0;
             habitacion = new Habitacion(15, 10);
-            jugador = new Personaje(6, 7, habitacion, '^');
+            jugador = new Entidades(6, 7, habitacion, '^');
+            disparo = new List<Arma>();
             
-            monda = new List<Personaje>();
+            monda = new List<Enemigos>();
 
             for (int fila = 0; fila < 3; fila++)
             {
@@ -54,9 +58,9 @@ public class Program()
                 {
 
                     int x = 5 + columna * 2; 
-                    int y = 1 + fila * 2; 
+                    int y = 2 + fila * 2; 
                     
-                    monda.Add(new Personaje(x, y, habitacion, '='));
+                    monda.Add(new Enemigos(x, y, habitacion, '=', monda));
                 }
             }
            
@@ -75,8 +79,45 @@ public class Program()
                     jugador.MoverHacia(1, 0);
                 if (tecla == ConsoleKey.LeftArrow)
                     jugador.MoverHacia(-1, 0);
+                if (tecla == ConsoleKey.Spacebar)
+                    Disparar();
+                
+                if (tecla == ConsoleKey.Escape)
+                    Environment.Exit(0);
             }
 
+            void Disparar()
+            {
+                disparo.Add(new Arma(jugador.x, jugador.y -1, habitacion, '|'));
+            }
+
+            foreach (var disparo in disparo)
+            {
+                disparo.MoverHacia(0, -1);               
+
+            }
+
+            for (int i = disparo.Count - 1; i >= 0; i--)
+            {
+                if (disparo[i].y == 1)
+                {
+                    disparo.RemoveAt(i);
+                }
+
+                else
+                {
+                    for (int m = 0; m < monda.Count; m++)
+                    {
+                        if (disparo[i].ColisionaConMonda(monda[m]))
+                        {
+                            disparo.RemoveAt(i);
+                            monda.RemoveAt(m);
+                            break;
+                        }
+
+                    }
+                }  
+            }
         }
 
         void DibujarPantalla()
@@ -85,10 +126,15 @@ public class Program()
             habitacion.Dibujar(lienzo);
             jugador.Dibujar(lienzo);
             
-            // monda x aqui monda x aca
-            foreach (var mondaPersonaje in monda)
+            // monda x aqui monda x alla
+            foreach (var mondaEnemigo in monda)
             {
-                mondaPersonaje.Dibujar(lienzo);
+                mondaEnemigo.Dibujar(lienzo);
+            }
+
+            foreach (var disparoArma in disparo)
+            {
+                disparoArma.Dibujar(lienzo);
             }
 
             lienzo.MostrarEnPantalla();
@@ -96,168 +142,4 @@ public class Program()
         }
     }
 
-    class Personaje
-    {
-        private int x, y;
-        private IMapa mapa;
-        private char dibujo;
-
-        public Personaje(int x, int y, IMapa mapa, char dibujo)
-        {
-            this.x = x;
-            this.y = y;
-            this.mapa = mapa;
-            this.dibujo = dibujo;
-        }
-
-        public void MoverHacia(int x, int y)
-        {
-            var nuevoX = this.x + x;
-            var nuevoY = this.y + y;
-
-            if (mapa.EstaLibre(nuevoX, nuevoY))
-            {
-                this.x = nuevoX;
-                this.y = nuevoY;
-            }
-        }
-
-        public void Dibujar(Lienzo lienzo)
-        {
-            lienzo.Dibujar(x, y, dibujo);
-        }
-    }
-
-    class Lienzo
-    {
-        private char[,] celdas;
-        private int ancho, alto;
-
-        public Lienzo(int ancho, int alto)
-        {
-            this.ancho = ancho;
-            this.alto = alto;
-            celdas = new char[ancho, alto];
-        }
-
-        public void Dibujar(int x, int y, char celda)
-        {
-            celdas[x, y] = celda;
-        }
-
-        public void MostrarEnPantalla()
-        {
-
-            Console.Clear();
-
-            for (int y = 0; y < alto; y++)
-            {
-                for (int x = 0; x < ancho; x++)
-                {
-                    Console.Write(celdas[x, y]);
-                }
-                Console.Write("\n");
-            }
-        }
-    }
-
-    interface IMapa
-    {
-        bool EstaLibre(int x, int y);
-    }
-
-    class Habitacion : IMapa
-    {
-        private List<Fila> filas;
-
-        public Habitacion(int ancho, int alto)
-        {
-            filas = new List<Fila>();
-
-            filas.Add(new FilaBorde(ancho));
-            for (int fila = 1; fila < alto - 1; fila++)
-            {
-                filas.Add(new FilaMedia(ancho));
-            }
-            filas.Add(new FilaBorde(ancho));
-        }
-
-        public void Dibujar(Lienzo lienzo)
-        {
-            for (int y = 0; y < filas.Count(); y++)
-            {
-                filas[y].Dibujar(lienzo, y);
-            }
-        }
-
-        public bool EstaLibre(int x, int y)
-        {
-            return filas[y].EstaLibre(x);
-        }
-    }
-
-    abstract class Fila
-    {
-        protected List<char> celdas;
-
-        public Fila(int cantidadCeldas)
-        {
-            this.celdas = new List<char>();
-
-            AgregarPunta();
-            for (int i = 1; i < cantidadCeldas - 1; i++)
-            {
-                AgregarMedio();
-            }
-            AgregarPunta();
-        }
-
-        protected abstract void AgregarMedio();
-        protected abstract void AgregarPunta();
-
-        public void Dibujar(Lienzo lienzo, int y)
-        {
-            for (int x = 0; x < celdas.Count(); x++)
-            {
-                lienzo.Dibujar(x, y, celdas[x]);
-            }
-        }
-
-        internal bool EstaLibre(int x)
-        {
-            return celdas[x] == ' ';
-        }
-    }
-
-    class FilaMedia : Fila
-    {
-        public FilaMedia(int cantidadCeldas) : base(cantidadCeldas)
-        {
-        }
-
-        protected override void AgregarMedio()
-        {
-            celdas.Add(' ');
-        }
-        protected override void AgregarPunta()
-        {
-            celdas.Add('#');
-        }
-    }
-
-    class FilaBorde : Fila
-    {
-        public FilaBorde(int cantidadCeldas) : base(cantidadCeldas)
-        {
-        }
-
-        protected override void AgregarMedio()
-        {
-            celdas.Add('#');
-        }
-        protected override void AgregarPunta()
-        {
-            celdas.Add('#');
-        }
-    }
 }
